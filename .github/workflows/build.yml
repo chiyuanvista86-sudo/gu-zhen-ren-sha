@@ -1,0 +1,73 @@
+name: Build, test and publish
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    name: Test and compile offline game
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - name: Package standalone game
+        run: |
+          cp README.md dist/README.md
+          cd dist
+          zip -r ../gu-zhen-ren-sha-web.zip .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gu-zhen-ren-sha-web
+          path: dist/
+      - uses: actions/upload-pages-artifact@v3
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        with:
+          path: dist/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gu-zhen-ren-sha-release
+          path: gu-zhen-ren-sha-web.zip
+  deploy:
+    name: Deploy GitHub Pages
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy website
+        id: deployment
+        uses: actions/deploy-pages@v4
+  release:
+    name: Publish downloadable game
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: gu-zhen-ren-sha-release
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: gh release create "$RELEASE_TAG" gu-zhen-ren-sha-web.zip --title "蛊真人杀 $RELEASE_TAG" --notes "五人身份局、八名蛊师、十三类蛊牌、单人 AI 对战。解压后双击 index.html 即可离线游玩。"
