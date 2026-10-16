@@ -5,3 +5,10 @@ dist/
 .env*
 coverage/
 *.tsbuildinfo
+android/.gradle/
+android/**/build/
+android/local.properties
+*.keystore
+*.jks
+*.p12
+*.apk

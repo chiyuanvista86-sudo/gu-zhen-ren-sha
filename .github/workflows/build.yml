@@ -55,28 +55,103 @@ jobs:
       - name: Deploy website
         id: deployment
         uses: actions/deploy-pages@v4
+  android:
+    name: Compile and verify Android APK
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: gu-zhen-ren-sha-web
+          path: dist
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Install Android build tools
+        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0' > /dev/null
+      - name: Compile unsigned PR debug APK
+        if: github.event_name == 'pull_request'
+        run: gradle -p android assembleDebug lintDebug --no-daemon
+      - name: Compile signed release APK
+        if: github.event_name != 'pull_request'
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          test -n "$ANDROID_KEYSTORE_BASE64"
+          export ANDROID_KEYSTORE_FILE="$RUNNER_TEMP/gu-signing.p12"
+          trap 'rm -f "$ANDROID_KEYSTORE_FILE"' EXIT
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$ANDROID_KEYSTORE_FILE"
+          gradle -p android assembleRelease lintRelease --no-daemon
+          cp android/app/build/outputs/apk/release/app-release.apk gu-zhen-ren-sha-android.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs gu-zhen-ren-sha-android.apk > android-build-info.txt
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging gu-zhen-ren-sha-android.apk >> android-build-info.txt
+          unzip -p gu-zhen-ren-sha-android.apk assets/index.html | cmp - dist/index.html
+          grep -q "versionName='2.0.1'" android-build-info.txt
+          grep -q "sdkVersion:'26'" android-build-info.txt
+          if grep -Eq "uses-permission: name='android.permission.(INTERNET|ACCESS_NETWORK_STATE|READ_EXTERNAL_STORAGE|WRITE_EXTERNAL_STORAGE|MANAGE_EXTERNAL_STORAGE)'" android-build-info.txt; then
+            echo 'Offline APK must not request network or storage permissions'
+            exit 1
+          fi
+      - name: Enable emulator acceleration
+        if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Test offline play, rotation and save restoration
+        if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          target: google_apis
+          profile: pixel_2
+          disable-animations: true
+          script: |
+            adb shell svc wifi disable
+            adb shell svc data disable
+            gradle -p android connectedDebugAndroidTest --no-daemon
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-test-and-lint-reports
+          path: android/app/build/reports/
+          if-no-files-found: ignore
+      - uses: actions/upload-artifact@v4
+        if: github.event_name != 'pull_request'
+        with:
+          name: gu-zhen-ren-sha-android
+          path: |
+            gu-zhen-ren-sha-android.apk
+            android-build-info.txt
+          if-no-files-found: error
   release:
     name: Publish downloadable game
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: build
+    needs: [build, android]
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           name: gu-zhen-ren-sha-release
+      - uses: actions/download-artifact@v4
+        with:
+          name: gu-zhen-ren-sha-android
       - name: Create release
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
-          cat > release-notes.md <<'EOF'
-          新增升仙对决：1v1 对战 AI、一至五转修炼、升仙准备轮、升仙地劫和每三轮一次的递增灾劫。
-
-          元石与仙缘全部在本局获取和消耗；账号仅解锁人物及完整专属体系。四名人物、十二种通用蛊方、六项通用杀招，包含仙蛊、耐久、拆蛊、升炼、维修和护劫屏障。保留经典身份局与独立存档。
-
-          下载 ZIP，解压后双击 index.html 即可离线游玩。CULTIVATION.md / CULTIVATION.json 列出新模式实际规则、卡牌编号和修改字段，CHANGELOG.md 记录本次改动。当前为规则原型，数值仍需试玩平衡。
-          EOF
-          gh release create "$RELEASE_TAG" gu-zhen-ren-sha-web.zip --title "蛊真人杀 $RELEASE_TAG · 升仙对决" --notes-file release-notes.md
+          sha256sum gu-zhen-ren-sha-android.apk gu-zhen-ren-sha-web.zip > SHA256SUMS.txt
+          gh release create "$RELEASE_TAG" gu-zhen-ren-sha-android.apk gu-zhen-ren-sha-web.zip SHA256SUMS.txt android-build-info.txt --title "蛊真人杀 $RELEASE_TAG · 安卓手机和平板安装版" --notes-file RELEASE_NOTES.md

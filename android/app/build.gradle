@@ -1,0 +1,62 @@
+plugins {
+    id 'com.android.application'
+}
+
+def releaseStore = System.getenv('ANDROID_KEYSTORE_FILE')
+android {
+    namespace 'io.github.chiyuanvista86.guzhenrensha'
+    compileSdk 35
+    defaultConfig {
+        applicationId 'io.github.chiyuanvista86.guzhenrensha'
+        minSdk 26
+        targetSdk 35
+        versionCode 20001
+        versionName '2.0.1'
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
+    }
+    signingConfigs {
+        if (releaseStore) {
+            release {
+                storeFile file(releaseStore)
+                storeType 'PKCS12'
+                storePassword System.getenv('ANDROID_KEYSTORE_PASSWORD')
+                keyAlias 'gu-zhen-ren-sha'
+                keyPassword System.getenv('ANDROID_KEYSTORE_PASSWORD')
+            }
+        }
+    }
+    buildTypes {
+        release {
+            if (releaseStore) signingConfig signingConfigs.release
+            minifyEnabled false
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    sourceSets.main.assets.srcDir '../../dist'
+    lint {
+        abortOnError true
+    }
+}
+dependencies {
+    implementation 'androidx.webkit:webkit:1.12.1'
+    androidTestImplementation 'androidx.test.ext:junit:1.2.1'
+    androidTestImplementation 'androidx.test:rules:1.6.1'
+}
+
+tasks.register('verifyWebAssets') {
+    doLast {
+        def page = file('../../dist/index.html')
+        if (!page.exists() || !page.getText('UTF-8').contains('升仙对决')) {
+            throw new GradleException('Run npm run build before compiling Android')
+        }
+    }
+}
+tasks.named('preBuild').configure { dependsOn 'verifyWebAssets' }
+tasks.matching { it.name == 'assembleRelease' }.configureEach {
+    doFirst {
+        if (!releaseStore) throw new GradleException('Release builds require the persistent Android signing secrets')
+    }
+}

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { download } from './download';
 import {
   BookOpen,
   Settings,
@@ -221,9 +222,7 @@ export default function LegacyApp() {
   }
   function exportLog() {
     if (!game) return;
-    const blob = new Blob(
-      [
-        JSON.stringify(
+    download("gu-zhen-ren-sha-record.json", JSON.stringify(
           {
             title: "蛊真人杀对局记录",
             exported: new Date().toISOString(),
@@ -236,26 +235,10 @@ export default function LegacyApp() {
           },
           null,
           2,
-        ),
-      ],
-      { type: "application/json" },
-    );
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "gu-zhen-ren-sha-record.json";
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+        ), "application/json");
   }
   function exportDesign() {
-    const url = URL.createObjectURL(
-      new Blob([designMarkdown()], { type: "text/markdown;charset=utf-8" }),
-    );
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "蛊真人杀-设计清单.md";
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    download("蛊真人杀-设计清单.md", designMarkdown());
   }
   let hint = "等待其他角色行动…";
   if (game && acting) {

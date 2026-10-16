@@ -8,11 +8,9 @@ import { actionError, activationCost, chooseCultAI, components, createCultGame, 
 import type { CultAction, CultGame, CultPlayer } from './cultivationEngine';
 import { cultivationMarkdown, cultivationPayload } from './cultivationDesign';
 import { loadProfile, readCult, savedCultGame, settleProfile, writeCult } from './cultivationStorage';
+import { download } from './download';
 
 const ART:Record<string,CardKind>={attack:'attack',guard:'armor',heal:'heal',repair:'draw',income:'wine',shred:'dismantle',force:'duel'};
-function download(name:string,text:string,type='text/markdown;charset=utf-8'){
-  const url=URL.createObjectURL(new Blob([text],{type}));const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
-}
 function GuArt({gu}:{gu:GuRecipe}){
   const kind:CardKind=gu.art==='ice'?'arrows':gu.art==='moon'?'attack':gu.art==='cloud'?'storm':gu.art==='wind'||gu.art==='wing'?'mount':ART[gu.effect];
   return <div className={`c-gu-art art-${gu.art}`}><CardIllustration kind={kind}/><span>{gu.rank===6?'仙':gu.tags[0].slice(0,1)}</span></div>;

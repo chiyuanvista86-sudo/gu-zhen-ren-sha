@@ -1,10 +1,11 @@
-# 蛊真人杀 · 升仙对决 v2.0.0
+# 蛊真人杀 · 升仙对决 v2.0.1
 
 蛊真人题材的单人策略卡牌同人游戏。默认进入原创规则「升仙对决」：选择人物与配方，从一转修炼至五转，准备渡劫升仙，再以仙缘催动蛊虫与杀招，在周期灾劫与对手的压力下争取胜利。
 
 ## 游玩与下载
 
 - 在线：https://chiyuanvista86-sudo.github.io/gu-zhen-ren-sha/
+- 安卓手机 / 平板：[下载 APK](https://github.com/chiyuanvista86-sudo/gu-zhen-ren-sha/releases/latest/download/gu-zhen-ren-sha-android.apk)，需要 Android 8.0+ 及正常更新的系统 WebView。安装后可离线游玩，支持横竖屏；系统提示时允许浏览器或文件管理器「安装未知应用」。iPhone / iPad 无法安装 APK。
 - 离线：在 GitHub Releases 下载 `gu-zhen-ren-sha-web.zip`，解压后双击 `index.html`。完整脚本、样式、SVG插画已内嵌。
 - 仓库：https://github.com/chiyuanvista86-sudo/gu-zhen-ren-sha
 - 顶部可切换「经典身份局」，保留 v1.1.0 的五人身份玩法及独立存档。
@@ -57,7 +58,11 @@ npm run check
 
 `dist/index.html` 是完整离线单文件；构建同时生成两种模式的 Markdown/JSON 清单。`npm run check` 包含规则测试、完整AI对局、TypeScript和离线嵌入完整性验证。
 
-GitHub Actions 在 main 推送后测试、构建并部署 Pages；`v*` 标签测试、构建并发布离线 ZIP。本项目独立使用仓库及工作流。
+GitHub Actions 在 main 推送后测试、构建并部署 Pages，同时编译签名 APK；`v*` 标签还在断网安卓模拟器中测试开局、旋转与存档恢复，再发布 APK、离线 ZIP 和校验值。本项目独立使用仓库及工作流。
+
+安卓工程位于 `android/`，使用 Java 17、Gradle 8.9、Android SDK 35，包名为 `io.github.chiyuanvista86.guzhenrensha`，通用 APK 不依赖特定处理器架构。先运行 `npm run build`，再运行 `gradle -p android assembleDebug`。签名发布使用 Actions Secrets `ANDROID_KEYSTORE_BASE64`（PKCS12）与 `ANDROID_KEYSTORE_PASSWORD`；本地发布还需设置 `ANDROID_KEYSTORE_FILE` 指向密钥文件。不要替换已发布的密钥，后续更新须使用相同签名并增加 `versionCode`。
+
+安卓内置游戏由 WebViewAssetLoader 在本地 HTTPS 源加载，没有网络或存储权限。导出使用系统文件选择器；后台暂停 WebView 计时。手机和平板可各自游玩，但不会自动同步存档；网页版存档也不会自动迁入 APK。卸载会清除本机存档，后续同签名版本可直接覆盖安装。设计数据版本保持 `2.0.0`，安装包版本为 `2.0.1`。
 
 主要源码：`src/cultivationData.ts` 为新模式数据；`src/cultivationEngine.ts` 为纯规则引擎与AI；`src/CultivationApp.tsx` 为界面；`src/cultivationStorage.ts` 为隔离存档。经典入口为 `src/LegacyApp.tsx`，旧引擎为 `src/engine.ts`。
 
