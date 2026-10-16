@@ -1,6 +1,7 @@
 import { defineConfig } from "vite";
 import type { Plugin } from "vite";
 import react from "@vitejs/plugin-react";
+import { designMarkdown, designPayload } from "./src/design";
 // Keep the game fully offline and double-clickable without a runtime server.
 function standalone(): Plugin {
   return {
@@ -30,6 +31,16 @@ function standalone(): Plugin {
         }
       }
       page.source = html;
+      this.emitFile({
+        type: "asset",
+        fileName: "DESIGN.md",
+        source: designMarkdown(),
+      });
+      this.emitFile({
+        type: "asset",
+        fileName: "DESIGN.json",
+        source: JSON.stringify(designPayload(), null, 2),
+      });
     },
   };
 }

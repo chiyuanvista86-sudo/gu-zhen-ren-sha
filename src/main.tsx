@@ -22,8 +22,8 @@ import {
   Clock,
   Pause,
 } from "lucide-react";
-import { CARDS, GENERALS, ROLES, general, isRed } from "./data";
-import type { Card, GeneralId, Role } from "./data";
+import { CARDS, COUNTS, GENERALS, ROLES, general } from "./data";
+import type { Card, CardKind, GeneralId, Role } from "./data";
 import {
   createGame,
   reduceGame,
@@ -34,10 +34,14 @@ import {
   distance,
 } from "./engine";
 import type { Game, Player } from "./engine";
-import { Portrait, GuMark } from "./Art";
+import { GuMark } from "./Art";
+import { Portrait } from "./ClassicArt";
+import { CardFace } from "./CardFace";
+import { GENERAL_DESIGN, CARD_DESIGN, designMarkdown } from "./design";
 import { read, write, savedGame } from "./storage";
 import "./style.css";
-type Modal = "rules" | "settings" | "generals" | "restart" | null;
+import "./classic.css";
+type Modal = "rules" | "settings" | "generals" | "restart" | "design" | null;
 function App() {
   const [game, setGame] = useState<Game | null>(savedGame),
     [hero, setHero] = useState<GeneralId>("fangyuan"),
@@ -50,6 +54,7 @@ function App() {
     [skillMode, setSkillMode] = useState(false),
     [modal, setModal] = useState<Modal>(null),
     [tab, setTab] = useState<"logs" | "identity">("logs");
+  const [inspected, setInspected] = useState<CardKind>("attack");
   const [speed, setSpeed] = useState(() => read("speed", 650)),
     [sound, setSound] = useState(() => read("sound", false)),
     [paused, setPaused] = useState(false),
@@ -57,6 +62,7 @@ function App() {
       read("stats", { played: 0, won: 0, last: "" }),
     );
   const logEnd = useRef<HTMLDivElement>(null),
+    logList = useRef<HTMLDivElement>(null),
     audio = useRef<AudioContext | null>(null);
   const me = game?.players[0],
     g = me ? general(me.general) : null,
@@ -102,7 +108,8 @@ function App() {
     return () => clearTimeout(timer);
   }, [game, screen, speed, paused, modal]);
   useEffect(() => {
-    logEnd.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    if (logList.current)
+      logList.current.scrollTop = logList.current.scrollHeight;
     if (sound && game && screen === "game") {
       try {
         audio.current ??= new AudioContext();
@@ -241,6 +248,16 @@ function App() {
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
+  function exportDesign() {
+    const url = URL.createObjectURL(
+      new Blob([designMarkdown()], { type: "text/markdown;charset=utf-8" }),
+    );
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "蛊真人杀-设计清单.md";
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
   let hint = "等待其他角色行动…";
   if (game && acting) {
     if (game.phase === "response")
@@ -282,6 +299,10 @@ function App() {
         <button onClick={() => setModal("rules")}>
           <BookOpen size={15} />
           玩法指南
+        </button>
+        <button onClick={() => setModal("design")}>
+          <ScrollText size={15} />
+          设计清单
         </button>
       </nav>
       <div className="top-right">
@@ -416,7 +437,7 @@ function App() {
           </section>
           <footer>
             蛊真人同人作品 · 非官方 · 原创规则改编与写意插画
-            <span>v1.0.0 / 无需登录 · 本地存档</span>
+            <span>v1.1.0 / 经典牌桌 · 本地存档</span>
           </footer>
         </main>
       ) : game && me && g ? (
@@ -473,19 +494,30 @@ function App() {
                 {game.discard.length}
                 <small>弃牌</small>
               </div>
+              <div className="phase-track" aria-label="回合阶段">
+                {["准备", "摸牌", "出牌", "弃牌", "结束"].map((phase, i) => (
+                  <span
+                    key={phase}
+                    className={
+                      (game.phase === "action" && i === 2) ||
+                      (game.phase === "discard" && i === 3)
+                        ? "current"
+                        : ""
+                    }
+                  >
+                    {phase}
+                  </span>
+                ))}
+                {game.phase === "response" && <b>响应中</b>}
+              </div>
               <div className="table-cards">
                 {game.table.slice(-4).map((c, i) => (
                   <div
                     key={`${c.id}-${i}`}
-                    className="played-card"
+                    className="played-card classic-played"
                     style={{ transform: `rotate(${(i - 1.5) * 4}deg)` }}
                   >
-                    <span className={isRed(c) ? "red" : ""}>
-                      {c.suit} {c.rank}
-                    </span>
-                    <GuMark kind={c.kind} />
-                    <b>{CARDS[c.kind].name}</b>
-                    <small>{CARDS[c.kind].category}</small>
+                    <CardFace card={c} />
                   </div>
                 ))}
               </div>
@@ -500,7 +532,7 @@ function App() {
               </div>
             </div>
             <div className={`action-bar ${acting ? "your-action" : ""}`}>
-              <span>
+              <span role="status" aria-live="polite">
                 <span className="status-dot" />
                 {paused ? "已暂停，点击右上角播放按钮继续。" : hint}
               </span>
@@ -550,6 +582,17 @@ function App() {
                 onClick={() => setTarget(0)}
               >
                 <Portrait id={me.general} />
+                <span
+                  className="self-identity"
+                  style={
+                    {
+                      "--identity": ROLES[me.role].color,
+                    } as React.CSSProperties
+                  }
+                >
+                  {ROLES[me.role].short}
+                </span>
+                <span className="self-path">{g.path}</span>
                 <div className="self-caption">
                   <span style={{ color: ROLES[me.role].color }}>
                     {ROLES[me.role].name} · 你
@@ -575,29 +618,30 @@ function App() {
                     {game.wine ? " · 酒虫生效" : ""}
                   </span>
                 </div>
-                <div className="hand-cards">
+                <div
+                  className={`hand-cards ${me.hand.length > 6 ? "crowded-hand" : ""}`}
+                  style={
+                    { "--hand-count": me.hand.length } as React.CSSProperties
+                  }
+                >
                   {me.hand.length ? (
                     me.hand.map((c) => (
                       <button
                         key={c.id}
-                        className={`hand-card ${selected.includes(c.id) ? "picked" : ""} ${isRed(c) ? "red" : ""} ${acting && (skillMode || game.phase === "discard" || (game.phase === "response" && c.kind === game.response?.required) || (game.phase === "action" && canPlay(game, c))) ? "playable" : "unplayable"}`}
+                        className={`hand-card ${selected.includes(c.id) ? "picked" : ""} ${acting && (skillMode || game.phase === "discard" || (game.phase === "response" && c.kind === game.response?.required) || (game.phase === "action" && canPlay(game, c))) ? "playable" : "unplayable"}`}
                         onClick={() => chooseCard(c)}
                         aria-label={`${CARDS[c.kind].name} ${c.suit}${c.rank}`}
                         aria-pressed={selected.includes(c.id)}
                         title={CARDS[c.kind].text}
+                        onMouseEnter={() => setInspected(c.kind)}
+                        onFocus={() => setInspected(c.kind)}
                       >
-                        <span className="card-corner">
-                          {c.rank}
-                          <small>{c.suit}</small>
-                        </span>
-                        <span className="card-category">
-                          {CARDS[c.kind].category}
-                        </span>
-                        <GuMark kind={c.kind} />
-                        <strong>{CARDS[c.kind].name}</strong>
-                        <small className="card-desc">
-                          {CARDS[c.kind].text}
-                        </small>
+                        <CardFace card={c} />
+                        {selected.includes(c.id) && (
+                          <span className="card-selected-mark">
+                            <Check size={12} />
+                          </span>
+                        )}
                       </button>
                     ))
                   ) : (
@@ -672,7 +716,7 @@ function App() {
             </div>
             {tab === "logs" ? (
               <>
-                <div className="log-list">
+                <div className="log-list" ref={logList}>
                   {game.logs.map((l) => (
                     <div
                       key={l.id}
@@ -711,13 +755,32 @@ function App() {
                 </small>
               </div>
             )}
-            <div className="side-tip">
-              <Flag size={14} />
-              <p>
-                {selectedCard
-                  ? CARDS[selectedCard.kind].text
-                  : "点击手牌查看效果。装备锯齿金蜈可将攻击范围提升至三。"}
-              </p>
+            <div className="side-tip card-inspector">
+              <div className="inspector-heading">
+                <Flag size={13} />
+                蛊牌详解 <small>悬停 / 选中手牌</small>
+              </div>
+              <div className="inspector-content">
+                <div className="inspector-card">
+                  <CardFace
+                    card={
+                      selectedCard ?? {
+                        id: -1,
+                        kind: inspected,
+                        suit: "♠",
+                        rank: "A",
+                      }
+                    }
+                  />
+                </div>
+                <div>
+                  <strong>{CARDS[selectedCard?.kind ?? inspected].name}</strong>
+                  <small>
+                    {CARDS[selectedCard?.kind ?? inspected].category}
+                  </small>
+                  <p>{CARDS[selectedCard?.kind ?? inspected].text}</p>
+                </div>
+              </div>
             </div>
           </aside>
           {game.phase === "over" && (
@@ -771,7 +834,7 @@ function App() {
       {modal && (
         <div className="modal-backdrop" onClick={() => setModal(null)}>
           <section
-            className={`modal ${modal === "generals" ? "wide" : ""}`}
+            className={`modal ${modal === "generals" || modal === "design" ? "wide" : ""}`}
             role="dialog"
             aria-modal="true"
             aria-label={
@@ -781,7 +844,9 @@ function App() {
                   ? "玩法指南"
                   : modal === "restart"
                     ? "重新开始"
-                    : "蛊师图鉴"
+                    : modal === "design"
+                      ? "设计清单"
+                      : "蛊师图鉴"
             }
             onClick={(e) => e.stopPropagation()}
           >
@@ -867,6 +932,87 @@ function App() {
                   返回选将
                 </button>
               </>
+            ) : modal === "design" ? (
+              <>
+                <span className="eyebrow">CURRENT DESIGN · 可按编号修改</span>
+                <h2>卡牌与人物技能设计清单</h2>
+                <p>
+                  以下为当前已经实现的规则与原型设计理由。本次只调整
+                  UI，技能效果与数量保持原样，尚未完成角色胜率平衡。
+                </p>
+                <button className="secondary" onClick={exportDesign}>
+                  <Download size={14} />
+                  下载完整清单
+                </button>
+                <h3>人物技能 · G01–G08</h3>
+                <div className="design-table-wrap">
+                  <table className="design-table">
+                    <thead>
+                      <tr>
+                        <th>编号 / 人物</th>
+                        <th>体力与技能</th>
+                        <th>当前效果</th>
+                        <th>设计思路与边界</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {GENERALS.map((x, i) => (
+                        <tr key={x.id}>
+                          <td>
+                            G{String(i + 1).padStart(2, "0")}
+                            <b>{x.name}</b>
+                          </td>
+                          <td>
+                            {x.hp} 体力<b>{x.skill}</b>
+                            {x.active ? "主动" : "被动"}
+                          </td>
+                          <td>{x.text}</td>
+                          <td>
+                            {GENERAL_DESIGN[x.id].idea}
+                            <small>{GENERAL_DESIGN[x.id].review}</small>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <h3>蛊牌 · C01–C13</h3>
+                <div className="design-table-wrap">
+                  <table className="design-table">
+                    <thead>
+                      <tr>
+                        <th>编号 / 蛊牌</th>
+                        <th>数量 / 参考</th>
+                        <th>当前效果</th>
+                        <th>设计思路与边界</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(Object.keys(CARDS) as CardKind[]).map((kind, i) => (
+                        <tr key={kind}>
+                          <td>
+                            C{String(i + 1).padStart(2, "0")}
+                            <b>{CARDS[kind].name}</b>
+                          </td>
+                          <td>
+                            {COUNTS[kind]} 张
+                            <b>{CARD_DESIGN[kind].reference}</b>
+                          </td>
+                          <td>{CARDS[kind].text}</td>
+                          <td>
+                            {CARD_DESIGN[kind].idea}
+                            <small>{CARD_DESIGN[kind].review}</small>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <p>
+                  修改示例：G01 方源，炼蛊改为……；C06
+                  盗天手，允许指定装备……。名称、体力、技能数、代价、次数、目标、牌数和全局规则都可以提出修改。
+                </p>
+              </>
             ) : (
               <>
                 <span className="eyebrow">GU MASTERS</span>
@@ -886,6 +1032,41 @@ function App() {
                         <b>{x.skill}</b>
                         <p>{x.text}</p>
                       </div>
+                    </article>
+                  ))}
+                </div>
+                <h3>蛊牌图鉴 · 十三类蛊牌</h3>
+                <div className="cards-collection">
+                  {(Object.keys(CARDS) as CardKind[]).map((kind, i) => (
+                    <article key={kind}>
+                      <div className="collection-face">
+                        <CardFace
+                          card={{
+                            id: -i,
+                            kind,
+                            suit: i % 2 ? "♥" : "♠",
+                            rank: [
+                              "A",
+                              "2",
+                              "3",
+                              "4",
+                              "5",
+                              "6",
+                              "7",
+                              "8",
+                              "9",
+                              "10",
+                              "J",
+                              "Q",
+                              "K",
+                            ][i],
+                          }}
+                        />
+                      </div>
+                      <b>
+                        C{String(i + 1).padStart(2, "0")} · {COUNTS[kind]} 张
+                      </b>
+                      <p>{CARDS[kind].text}</p>
                     </article>
                   ))}
                 </div>
@@ -913,14 +1094,22 @@ function Seat({
   const g = general(p.general);
   return (
     <button
-      className={`seat ${game.active === p.id ? "active" : ""} ${!p.alive ? "dead" : ""} ${targetable ? "targetable" : ""} ${selected ? "target-selected" : ""}`}
+      className={`seat seat-${p.id} ${game.active === p.id ? "active" : ""} ${!p.alive ? "dead" : ""} ${targetable ? "targetable" : ""} ${selected ? "target-selected" : ""}`}
+      style={
+        {
+          "--general-color": g.color,
+          "--identity": p.revealed ? ROLES[p.role].color : "#8b8069",
+        } as React.CSSProperties
+      }
       onClick={onClick}
       aria-label={`${g.name}，${p.alive ? `体力 ${p.hp}/${p.maxHp}` : "已阵亡"}${targetable ? "，可选择为目标" : ""}`}
       aria-pressed={selected}
     >
       <div className="seat-art">
         <Portrait id={p.general} />
-        <span className="seat-number">0{p.id + 1}</span>
+        <span className="seat-number">
+          {["一", "二", "三", "四", "五"][p.id]}号位
+        </span>
         <span
           className="role-badge"
           style={{

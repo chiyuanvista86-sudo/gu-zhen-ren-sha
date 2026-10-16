@@ -70,4 +70,4 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           RELEASE_TAG: ${{ github.ref_name }}
-        run: gh release create "$RELEASE_TAG" gu-zhen-ren-sha-web.zip --title "蛊真人杀 $RELEASE_TAG" --notes "五人身份局、八名蛊师、十三类蛊牌、单人 AI 对战。解压后双击 index.html 即可离线游玩。"
+        run: gh release create "$RELEASE_TAG" gu-zhen-ren-sha-web.zip --title "蛊真人杀 $RELEASE_TAG" --notes "经典身份牌桌 UI、八名蛊师、十三类原创蛊牌插画与可修改的设计清单。解压后双击 index.html 即可离线游玩；DESIGN.md 与 DESIGN.json 列出人物技能、卡牌思路和规则边界。"
