@@ -25,6 +25,7 @@ jobs:
       - name: Package standalone game
         run: |
           cp README.md dist/README.md
+          cp CHANGELOG.md dist/CHANGELOG.md
           cd dist
           zip -r ../gu-zhen-ren-sha-web.zip .
       - uses: actions/upload-artifact@v4
@@ -70,4 +71,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           RELEASE_TAG: ${{ github.ref_name }}
-        run: gh release create "$RELEASE_TAG" gu-zhen-ren-sha-web.zip --title "蛊真人杀 $RELEASE_TAG" --notes "经典身份牌桌 UI、八名蛊师、十三类原创蛊牌插画与可修改的设计清单。解压后双击 index.html 即可离线游玩；DESIGN.md 与 DESIGN.json 列出人物技能、卡牌思路和规则边界。"
+        run: |
+          cat > release-notes.md <<'EOF'
+          新增升仙对决：1v1 对战 AI、一至五转修炼、升仙准备轮、升仙地劫和每三轮一次的递增灾劫。
+
+          元石与仙缘全部在本局获取和消耗；账号仅解锁人物及完整专属体系。四名人物、十二种通用蛊方、六项通用杀招，包含仙蛊、耐久、拆蛊、升炼、维修和护劫屏障。保留经典身份局与独立存档。
+
+          下载 ZIP，解压后双击 index.html 即可离线游玩。CULTIVATION.md / CULTIVATION.json 列出新模式实际规则、卡牌编号和修改字段，CHANGELOG.md 记录本次改动。当前为规则原型，数值仍需试玩平衡。
+          EOF
+          gh release create "$RELEASE_TAG" gu-zhen-ren-sha-web.zip --title "蛊真人杀 $RELEASE_TAG · 升仙对决" --notes-file release-notes.md
