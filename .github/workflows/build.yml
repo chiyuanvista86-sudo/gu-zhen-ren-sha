@@ -107,6 +107,11 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
+      - name: Compile emulator tests before booting the virtual device
+        if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+        run: |
+          gradle -p android assembleDebug assembleDebugAndroidTest --no-daemon
+          free -h
       - name: Test offline play, rotation and save restoration
         if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
         uses: reactivecircus/android-emulator-runner@v2
@@ -115,16 +120,22 @@ jobs:
           arch: x86_64
           target: google_apis
           profile: pixel_2
+          ram-size: 2048M
+          heap-size: 256M
+          emulator-options: -no-window -gpu swiftshader -no-snapshot -noaudio -no-boot-anim -camera-back none -camera-front none -skin 720x1280
           disable-animations: true
           script: |
             adb shell svc wifi disable
             adb shell svc data disable
-            gradle -p android connectedDebugAndroidTest --no-daemon
+            gradle -p android connectedDebugAndroidTest --no-daemon || { adb logcat -d > android-logcat.txt; sudo dmesg | tail -80; exit 1; }
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: android-test-and-lint-reports
-          path: android/app/build/reports/
+          path: |
+            android/app/build/reports/
+            android/app/build/outputs/androidTest-results/
+            android-logcat.txt
           if-no-files-found: ignore
       - uses: actions/upload-artifact@v4
         if: github.event_name != 'pull_request'
