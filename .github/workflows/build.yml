@@ -26,6 +26,7 @@ jobs:
         run: |
           cp README.md dist/README.md
           cp CHANGELOG.md dist/CHANGELOG.md
+          cp ART_SOURCES.md ART_SOURCES.json dist/
           cd dist
           zip -r ../gu-zhen-ren-sha-web.zip .
       - uses: actions/upload-artifact@v4
@@ -95,7 +96,7 @@ jobs:
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs gu-zhen-ren-sha-android.apk > android-build-info.txt
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging gu-zhen-ren-sha-android.apk >> android-build-info.txt
           unzip -p gu-zhen-ren-sha-android.apk assets/index.html | cmp - dist/index.html
-          grep -q "versionName='3.0.0'" android-build-info.txt
+          grep -q "versionName='3.1.0'" android-build-info.txt
           grep -q "sdkVersion:'26'" android-build-info.txt
           if grep -Eq "uses-permission: name='android.permission.(INTERNET|ACCESS_NETWORK_STATE|READ_EXTERNAL_STORAGE|WRITE_EXTERNAL_STORAGE|MANAGE_EXTERNAL_STORAGE)'" android-build-info.txt; then
             echo 'Offline APK must not request network or storage permissions'

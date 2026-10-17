@@ -1,0 +1,256 @@
+{
+  "sourceUrl": "https://39.105.107.72/downloads/gujiesha-latest.apk",
+  "referenceVersion": "0.16.46",
+  "apkSha256": "2ceb88b22d20ac2bd9ac776dca92738a8808f1150b0553504d6fb6a80e13e296",
+  "processing": "Selected images resized and encoded as WebP; no reference application code or gameplay data shipped.",
+  "assets": [
+    {
+      "file": "hero-fangyuan.webp",
+      "source": "assets/web/assets/images/masters/1.jpg",
+      "width": 440,
+      "height": 634,
+      "bytes": 35520,
+      "sha256": "7bb8037c3ab18ba60eb6f26b4ab2503ddf1040e55f6b7881aa949ab1e69d1c5e"
+    },
+    {
+      "file": "hero-baininbing.webp",
+      "source": "assets/web/assets/images/masters/2.jpg",
+      "width": 427,
+      "height": 640,
+      "bytes": 72814,
+      "sha256": "fde0d4f9e68d7c223f1c6449fb249fb290cef3feba0e266ed79537989ca8ea05"
+    },
+    {
+      "file": "hero-he-loulan.webp",
+      "source": "assets/web/assets/images/masters/4.jpg",
+      "width": 427,
+      "height": 640,
+      "bytes": 41384,
+      "sha256": "7b30a78e286371b00b8fdb9dcdd5b18408290bccbc618772b2d4cc35d2188ec6"
+    },
+    {
+      "file": "hero-taibai.webp",
+      "source": "assets/web/assets/images/masters/21.jpg",
+      "width": 426,
+      "height": 640,
+      "bytes": 36440,
+      "sha256": "a90d35bbe09d4f1c439667bd9682b2779628f6b3fbe287b62e3333020f6f16cf"
+    },
+    {
+      "file": "gu-1.webp",
+      "source": "assets/web/assets/images/cards/1.jpg",
+      "width": 300,
+      "height": 450,
+      "bytes": 8604,
+      "sha256": "6b9f40832c7df7acfcac2c46413b6f2b7d0e52e78b0412748debaf68b5cee6cb"
+    },
+    {
+      "file": "gu-2.webp",
+      "source": "assets/web/assets/images/cards/2.jpg",
+      "width": 300,
+      "height": 450,
+      "bytes": 10830,
+      "sha256": "272c63ff2b947382a706e7445975877d71d6126f12f522937c35036f7875eab0"
+    },
+    {
+      "file": "gu-3.webp",
+      "source": "assets/web/assets/images/cards/3.jpg",
+      "width": 300,
+      "height": 450,
+      "bytes": 12664,
+      "sha256": "f90977a9832281099270f73394f6b318b712873310144c8d59c278a362c989a3"
+    },
+    {
+      "file": "gu-6.webp",
+      "source": "assets/web/assets/images/cards/6.jpg",
+      "width": 300,
+      "height": 450,
+      "bytes": 12902,
+      "sha256": "f920d18431e9e9dda04adb1d6b6c73a741f54dd586132433317bfc6a48ad71fe"
+    },
+    {
+      "file": "gu-7.webp",
+      "source": "assets/web/assets/images/cards/7.jpg",
+      "width": 300,
+      "height": 450,
+      "bytes": 14288,
+      "sha256": "ef75f309d5682c7e2b87d76a4620586994ccc510a8bc49ddfd21df935eb32bb6"
+    },
+    {
+      "file": "gu-8.webp",
+      "source": "assets/web/assets/images/cards/8.jpg",
+      "width": 300,
+      "height": 450,
+      "bytes": 19248,
+      "sha256": "6a89659e4566fe42d98fc1f148a3dc6d917b42354e3cf0c3f613cff97496d305"
+    },
+    {
+      "file": "gu-18.webp",
+      "source": "assets/web/assets/images/cards/18.jpg",
+      "width": 300,
+      "height": 450,
+      "bytes": 15002,
+      "sha256": "3319b951d294ca6260e5a18eec8b9f7a99b1231468ba4cdd45103cd1f781959a"
+    },
+    {
+      "file": "gu-20.webp",
+      "source": "assets/web/assets/images/cards/20.jpg",
+      "width": 300,
+      "height": 450,
+      "bytes": 11518,
+      "sha256": "c3700b6be1512d09297daa219a4ef83e6626f5777a69336ebcec5b6be1879dc6"
+    },
+    {
+      "file": "gu-21.webp",
+      "source": "assets/web/assets/images/cards/21.jpg",
+      "width": 300,
+      "height": 450,
+      "bytes": 18498,
+      "sha256": "c6fc60d3d8a2cd2ab8c1ebc3e3e42ff2c118974f263674be63c9351d17e16665"
+    },
+    {
+      "file": "gu-22.webp",
+      "source": "assets/web/assets/images/cards/22.jpg",
+      "width": 300,
+      "height": 450,
+      "bytes": 25332,
+      "sha256": "112a7e4d7ec1064111da89296bafb65bdd3bb90ede2df1b3eaf124b9bf60fa68"
+    },
+    {
+      "file": "gu-29.webp",
+      "source": "assets/web/assets/images/cards/29.jpg",
+      "width": 300,
+      "height": 450,
+      "bytes": 14878,
+      "sha256": "7ceca0d9986c14c5fd976a511da2bb476a1d982577908c4c11dd1baec2972e78"
+    },
+    {
+      "file": "gu-31.webp",
+      "source": "assets/web/assets/images/cards/31.jpg",
+      "width": 300,
+      "height": 450,
+      "bytes": 29680,
+      "sha256": "4af6bb91b92f9283c8e1f24f9cf8d1512e38712c712898d8b93190a8a2e2ffad"
+    },
+    {
+      "file": "gu-32.webp",
+      "source": "assets/web/assets/images/cards/32.jpg",
+      "width": 300,
+      "height": 450,
+      "bytes": 29832,
+      "sha256": "2ae766f29fad159283ea598fcf1d0a8ce272c485850bdfc7da9168c1eb316494"
+    },
+    {
+      "file": "gu-38.webp",
+      "source": "assets/web/assets/images/cards/38.jpg",
+      "width": 300,
+      "height": 450,
+      "bytes": 19490,
+      "sha256": "26b2767a435e382d376400c9b28eaa3b7447f9eeabe92e3389ada0799b452ff3"
+    },
+    {
+      "file": "gu-39.webp",
+      "source": "assets/web/assets/images/cards/39.jpg",
+      "width": 300,
+      "height": 450,
+      "bytes": 23058,
+      "sha256": "f99f99a95962aba3379f96b4fb33f36fd9f05916af1ae47e2958a271863f01a3"
+    },
+    {
+      "file": "gu-49.webp",
+      "source": "assets/web/assets/images/cards/49.jpg",
+      "width": 300,
+      "height": 450,
+      "bytes": 32192,
+      "sha256": "a6186f972a19c691886068d448dfed446bcb540db83e2de074b64b101b71ec22"
+    },
+    {
+      "file": "gu-56.webp",
+      "source": "assets/web/assets/images/cards/56.jpg",
+      "width": 300,
+      "height": 450,
+      "bytes": 17762,
+      "sha256": "b4de31e1f76c0ac26e1a3273f3d48c0ad8f6ee0500601e9a15f9e14c47cc901e"
+    },
+    {
+      "file": "gu-57.webp",
+      "source": "assets/web/assets/images/cards/57.jpg",
+      "width": 300,
+      "height": 450,
+      "bytes": 30616,
+      "sha256": "1cc9598741c6c09cd0827c654b19894d98796faae8d3a19f18aae87fea78a067"
+    },
+    {
+      "file": "gu-58.webp",
+      "source": "assets/web/assets/images/cards/58.jpg",
+      "width": 300,
+      "height": 450,
+      "bytes": 18962,
+      "sha256": "2ed16ec6bda6bb003880e43fd705cfb8b3a94859052cef1d4ee5a140fe002eca"
+    },
+    {
+      "file": "gu-59.webp",
+      "source": "assets/web/assets/images/cards/59.jpg",
+      "width": 300,
+      "height": 450,
+      "bytes": 20148,
+      "sha256": "5d52d865f030db51016305d881045d829ef881d846a2f53d90975c9b64f79fc4"
+    },
+    {
+      "file": "gu-61.webp",
+      "source": "assets/web/assets/images/cards/61.jpg",
+      "width": 300,
+      "height": 450,
+      "bytes": 30630,
+      "sha256": "8423f2e78c5773aed531f4dbed06ad4eb819a1ef9955fb051fecb60d6df72bcb"
+    },
+    {
+      "file": "gu-66.webp",
+      "source": "assets/web/assets/images/cards/66.jpg",
+      "width": 300,
+      "height": 450,
+      "bytes": 20838,
+      "sha256": "cec0eb5a494e670ca62f3891af7729f4cc42622b1b295281aa7f0714b4cc68fc"
+    },
+    {
+      "file": "gu-68.webp",
+      "source": "assets/web/assets/images/cards/68.jpg",
+      "width": 300,
+      "height": 450,
+      "bytes": 22820,
+      "sha256": "facc2cbe47b5f9e5d7a0291ffc739a81938b5405cef46b871a912c6be53486fd"
+    },
+    {
+      "file": "gu-74.webp",
+      "source": "assets/web/assets/images/cards/74.jpg",
+      "width": 300,
+      "height": 450,
+      "bytes": 42502,
+      "sha256": "e56ac5fc7696ed475cdc48a70718cbc81415aea0585b912063cc4ec092246d3f"
+    },
+    {
+      "file": "gu-75.webp",
+      "source": "assets/web/assets/images/cards/75.jpg",
+      "width": 300,
+      "height": 450,
+      "bytes": 30292,
+      "sha256": "72973cfc7457acd1352e13eb2f37556210427b4b575d3f4c761e921b44d047ca"
+    },
+    {
+      "file": "battle-arena.webp",
+      "source": "assets/web/assets/images/backgrounds/battle-arena-generated.png",
+      "width": 1600,
+      "height": 900,
+      "bytes": 109196,
+      "sha256": "5b1d25878f9bef5b9a9fbd018c2d143c7c4cef66e0fa65cc3b8e36a8ba309073"
+    },
+    {
+      "file": "home-hero.webp",
+      "source": "assets/web/assets/images/backgrounds/home-hero-user.png",
+      "width": 1600,
+      "height": 900,
+      "bytes": 229850,
+      "sha256": "200a9f852918049398b7bec6012ce8ed3e03c21bca1241c91b0c13129cac47de"
+    }
+  ]
+}
