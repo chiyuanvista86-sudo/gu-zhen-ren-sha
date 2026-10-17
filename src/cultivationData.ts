@@ -1,6 +1,6 @@
 import type { GeneralId } from './data';
 export const GAME_NAME = '蛊道争仙';
-export const GAME_VERSION = '3.1.0';
+export const GAME_VERSION = '3.2.0';
 export type HeroId = 'fangyuan' | 'baininbing' | 'he Loulan' | 'taibai';
 export type GuEffect = 'attack' | 'guard' | 'heal' | 'repair' | 'income' | 'shred';
 export interface GuRecipe {
