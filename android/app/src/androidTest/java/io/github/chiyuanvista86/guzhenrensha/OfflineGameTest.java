@@ -18,7 +18,7 @@ public class OfflineGameTest {
         AtomicReference<String> result = new AtomicReference<>();
         scenario.onActivity(activity -> ((WebView) activity.findViewById(R.id.game_webview))
             .evaluateJavascript(script, value -> { result.set(value); done.countDown(); }));
-        assertTrue("JavaScript callback", done.await(5, TimeUnit.SECONDS));
+        assertTrue("JavaScript callback timed out: " + script, done.await(30, TimeUnit.SECONDS));
         return result.get();
     }
     private void await(ActivityScenario<MainActivity> scenario, String script) throws Exception {

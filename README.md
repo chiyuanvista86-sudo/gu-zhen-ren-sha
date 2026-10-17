@@ -1,4 +1,4 @@
-# 蛊道争仙 v3.2.0
+# 蛊道争仙 v3.2.1
 
 蛊真人题材的单人策略卡牌同人游戏。「升仙对决」与共用凡蛊手牌系统已融合为唯一玩法：炼蛊成招、交易谋局、经营寿元，再渡劫入仙。
 
@@ -8,7 +8,7 @@ v3.2 新增 Windows 桌面适配：战场按窗口高度收纳，大屏放大卡
 
 ## 游玩与下载
 
-- [安卓手机和平板 APK](https://github.com/chiyuanvista86-sudo/gu-zhen-ren-sha/releases/latest/download/gu-zhen-ren-sha-android.apk)：Android 8.0+，安装后离线游玩，支持横竖屏。请保持系统 WebView 正常更新。
+- [安卓手机和平板稳定版 APK（v3.1.0）](https://github.com/chiyuanvista86-sudo/gu-zhen-ren-sha/releases/download/v3.1.0/gu-zhen-ren-sha-android.apk)：Android 8.0+，安装后离线游玩，支持横竖屏。请保持系统 WebView 正常更新。新版 APK 在安卓验证通过后附加到对应发布页，Windows 包独立发布。
 - [Windows 离线包](https://github.com/chiyuanvista86-sudo/gu-zhen-ren-sha/releases/latest/download/gu-zhen-ren-sha-windows.zip)：完整解压后双击 `Play.cmd`，或用 Edge / Chrome 打开 `index.html`，无需安装运行环境。通过浏览器运行。
 - [在线游玩](https://chiyuanvista86-sudo.github.io/gu-zhen-ren-sha/)
 - [发布和下载](https://github.com/chiyuanvista86-sudo/gu-zhen-ren-sha/releases)：电脑可下载 `gu-zhen-ren-sha-web.zip`，解压打开 `index.html`。
