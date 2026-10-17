@@ -1,24 +1,11 @@
-import { readFileSync } from "node:fs";
-import assert from "node:assert/strict";
-const html = readFileSync(
-  new URL("../dist/index.html", import.meta.url),
-  "utf8",
-);
-assert(!/<script\b[^>]*\bsrc\s*=/i.test(html), "Scripts must be embedded");
-assert(
-  !/<link\b[^>]*\brel="(?:stylesheet|modulepreload)"/i.test(html),
-  "Styles and modules must be embedded",
-);
-assert(
-  html.includes("蛊真人杀") &&
-    html.includes("升仙对决") &&
-    html.includes("经典身份局") &&
-    html.includes("<style>") &&
-    html.includes('<script type="module">'),
-  "Missing game bundle",
-);
-const cultivation = readFileSync(new URL('../dist/CULTIVATION.json',import.meta.url),'utf8');
-assert(JSON.parse(cultivation).version==='2.0.0','Missing new-mode design manifest');
-console.log(
-  `Standalone HTML verified: ${(Buffer.byteLength(html) / 1024).toFixed(1)} KB, no external scripts or styles.`,
-);
+import { readFileSync } from 'node:fs';
+import assert from 'node:assert/strict';
+const html=readFileSync(new URL('../dist/index.html',import.meta.url),'utf8');
+assert(!/<script\b[^>]*\bsrc\s*=/i.test(html),'Scripts must be embedded');
+assert(!/<link\b[^>]*\brel="(?:stylesheet|modulepreload)"/i.test(html),'Styles must be embedded');
+assert(html.includes('蛊道争仙')&&html.includes('东窗蛊')&&html.includes('<style>')&&html.includes('<script type="module">'),'Missing merged game');
+assert(!html.includes('经典身份局')&&!html.includes('mode-switch'),'Removed mode must not ship');
+const manifest=JSON.parse(readFileSync(new URL('../dist/CULTIVATION.json',import.meta.url),'utf8'));
+assert(manifest.version==='3.0.0'&&manifest.hands.length===8&&manifest.gu.every(g=>g.rank<6),'Wrong rule manifest');
+assert(new Set(manifest.heroes.map(h=>h.immortal.id)).size===manifest.heroes.length,'Immortal Gu ownership must be unique');
+console.log('Standalone merged game verified: '+(Buffer.byteLength(html)/1024).toFixed(1)+' KB; no external scripts or styles.');

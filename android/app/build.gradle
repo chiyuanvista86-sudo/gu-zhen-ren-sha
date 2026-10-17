@@ -10,8 +10,8 @@ android {
         applicationId 'io.github.chiyuanvista86.guzhenrensha'
         minSdk 26
         targetSdk 35
-        versionCode 20001
-        versionName '2.0.1'
+        versionCode 30000
+        versionName '3.0.0'
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
     signingConfigs {
@@ -49,7 +49,7 @@ dependencies {
 tasks.register('verifyWebAssets') {
     doLast {
         def page = file('../../dist/index.html')
-        if (!page.exists() || !page.getText('UTF-8').contains('升仙对决')) {
+        if (!page.exists() || !page.getText('UTF-8').contains('蛊道争仙')) {
             throw new GradleException('Run npm run build before compiling Android')
         }
     }

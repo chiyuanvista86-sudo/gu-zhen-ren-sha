@@ -5,7 +5,7 @@
         android:enableOnBackInvokedCallback="false"
         android:hardwareAccelerated="true"
         android:icon="@mipmap/ic_launcher"
-        android:label="蛊真人杀"
+        android:label="蛊道争仙"
         android:supportsRtl="true"
         android:theme="@style/GameTheme"
         android:usesCleartextTraffic="false">

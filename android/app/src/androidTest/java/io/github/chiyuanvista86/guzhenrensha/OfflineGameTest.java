@@ -35,7 +35,7 @@ public class OfflineGameTest {
             assertEquals("true", evaluate(scenario, "typeof GuAndroid.exportFile === 'function'"));
             assertEquals("true", evaluate(scenario, "document.documentElement.scrollWidth <= innerWidth + 1"));
             evaluate(scenario, "document.querySelector('.c-start-row button').click()");
-            await(scenario, "!!document.querySelector('.c-arena') && !!localStorage.getItem('gu-zhen-ren-sha:cultivation:v2:game')");
+            await(scenario, "!!document.querySelector('.c-arena') && !!localStorage.getItem('gu-zhen-ren-sha:cultivation:v3:game')");
             evaluate(scenario, "window.rotationProbe = 42");
             scenario.onActivity(activity -> activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE));
             await(scenario, "innerWidth > innerHeight");
@@ -43,9 +43,9 @@ public class OfflineGameTest {
             assertEquals("true", evaluate(scenario, "document.documentElement.scrollWidth <= innerWidth + 1"));
             scenario.recreate();
             await(scenario, "!!document.querySelector('.c-arena')");
-            assertEquals("true", evaluate(scenario, "JSON.parse(localStorage.getItem('gu-zhen-ren-sha:cultivation:v2:game')).players.length === 2"));
-            evaluate(scenario, "document.querySelectorAll('.mode-switch button')[1].click()");
-            await(scenario, "!document.querySelector('.mode-switch button').classList.contains('active')");
+            assertEquals("true", evaluate(scenario, "JSON.parse(localStorage.getItem('gu-zhen-ren-sha:cultivation:v3:game')).players.length === 2"));
+            assertEquals("true", evaluate(scenario, "!document.querySelector('.mode-switch') && document.title.includes('蛊道争仙')"));
+            assertEquals("true", evaluate(scenario, "JSON.parse(localStorage.getItem('gu-zhen-ren-sha:cultivation:v3:game')).version === 3"));
         }
     }
 }

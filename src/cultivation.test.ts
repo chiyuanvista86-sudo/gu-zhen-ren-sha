@@ -1,154 +1,50 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_GU, DEFAULT_MOVES, GU, HEROES, MOVES, RULES, getGu } from './cultivationData';
-import { actionError, activationCost, chooseCultAI, components, createCultGame, forecast, guMaximum, reduceCultGame, resource } from './cultivationEngine';
-import type { CultGame } from './cultivationEngine';
+import { DEFAULT_GU, DEFAULT_MOVES, GU, HEROES, MOVES, getGu } from './cultivationData';
+import { HANDS } from './handData';
+import type { HandKind } from './handData';
+import { actionError, allCards, chooseCultAI, components, createCultGame, forecast, handCost, qiMaximum, reduceCultGame, resource } from './cultivationEngine';
+import type { CultGame, CultAction } from './cultivationEngine';
 import { settleProfile, validCultSave } from './cultivationStorage';
-
 function game(){const g=createCultGame('fangyuan',DEFAULT_GU,DEFAULT_MOVES,10,'baininbing');g.actor=0;return g;}
+function give(g:CultGame,who:number,kind:HandKind){for(const zone of [g.deck,g.discard,g.market]){const i=zone.findIndex(c=>c.kind===kind);if(i>=0){const c=zone.splice(i,1)[0];g.players[who].hand.push(c);return c;}}throw new Error('No card available');}
+function play(g:CultGame,who:number,kind:HandKind,extras:Partial<Extract<CultAction,{type:'hand'}>>={}){const c=g.players[who].hand.find(c=>c.kind===kind)??give(g,who,kind);return reduceCultGame(g,who,{type:'hand',uid:c.uid,...extras});}
+function finish(g:CultGame){let s=g,n=0;while(s.winner===null&&s.round===g.round&&n++<20)s=reduceCultGame(s,s.actor,s.pending?chooseCultAI(s):{type:'pass'});return s;}
 function addGu(g:CultGame,who:number,slot:number,id:string){g.players[who].slots[slot]={recipe:id,durability:getGu(id).durability,upgraded:false,usedRound:0};}
-function finishRound(g:CultGame){let s=g;while(s.winner===null&&s.round===g.round)s=reduceCultGame(s,s.actor,{type:'pass'});return s;}
-
-describe('升仙对决：资源、构筑和行动',()=>{
-  it('双方同一起点，只有人物天赋与配方不同',()=>{
-    const g=game();for(const p of g.players){expect(p.hp).toBe(30);expect(p.rank).toBe(1);expect(p.yuan).toBe(5);expect(p.essence).toBe(0);expect(p.ap).toBe(3);expect(p.slots.filter(Boolean)).toHaveLength(1);}
-    expect(validCultSave(JSON.parse(JSON.stringify(g)))).toBe(true);
-    expect(validCultSave({...g,version:1})).toBe(false);
-  });
-  it('拒绝未携带、重复、专属越权与数量错误的构筑',()=>{
-    expect(()=>createCultGame('fangyuan',['moon'],DEFAULT_MOVES)).toThrow();
-    expect(()=>createCultGame('fangyuan',['moon','moon','grass','repair','wine'],DEFAULT_MOVES)).toThrow();
-    expect(()=>createCultGame('fangyuan',['bn-guard','armor','grass','repair','wine'],DEFAULT_MOVES)).toThrow();
-    const g=game();expect(reduceCultGame(g,0,{type:'refine',recipe:'bn-guard',slot:1})).toBe(g);
-  });
-  it('非法操作不变更原状态或消耗资源',()=>{
-    const g=game(),copy=JSON.stringify(g);g.players[0].yuan=0;const snapshot=JSON.stringify(g);
-    expect(reduceCultGame(g,0,{type:'refine',recipe:'moon',slot:1})).toBe(g);
-    expect(reduceCultGame(g,1,{type:'pass'})).toBe(g);
-    expect(reduceCultGame(g,0,{type:'activate',slot:7})).toBe(g);
-    expect(JSON.stringify(g)).toBe(snapshot);expect(copy).not.toBe(snapshot);
-  });
-  it('交替行动，拒绝重复催动，每轮总行动有限',()=>{
-    const g=game(),next=reduceCultGame(g,0,{type:'activate',slot:0});
-    expect(g.players[1].hp).toBe(30);expect(next.players[1].hp).toBe(28);expect(next.actor).toBe(1);expect(next.players[0].ap).toBe(2);
-    const again=reduceCultGame(next,1,{type:'pass'});expect(actionError(again,0,{type:'activate',slot:0})).toMatch(/本轮/);
-  });
-  it('炼制折扣仅每轮首次，替换不退款且同名不重复',()=>{
-    let g=game();g.players[1].ap=0;
-    g=reduceCultGame(g,0,{type:'refine',recipe:'moon',slot:1});expect(g.players[0].yuan).toBe(4);
-    expect(actionError(g,0,{type:'refine',recipe:'moon',slot:2})).toMatch(/同名/);
-    g=reduceCultGame(g,0,{type:'refine',recipe:'armor',slot:1});expect(g.players[0].yuan).toBe(2);expect(g.players[0].slots[1]?.recipe).toBe('armor');
-  });
-  it('不能提前用仙蛊；升转不增加元石补给',()=>{
-    let g=game();expect(actionError(g,0,{type:'refine',recipe:'fy-break',slot:1})).toBe('需要6转');
-    g.players[1].ap=0;g=reduceCultGame(g,0,{type:'cultivate'});expect(g.players[0].rank).toBe(2);
-    expect(actionError(g,0,{type:'cultivate'})).toMatch(/每轮/);
-    const before=g.players[0].yuan;g=finishRound(g);expect(g.players[0].yuan).toBe(Math.min(12,before+5));
-  });
-  it('护盾保护指定蛊虫，组件可被摧毁',()=>{
-    const g=game();g.players[1].shield=1;g.players[1].slots[0]!.durability=1;
-    const next=reduceCultGame(g,0,{type:'activate',slot:0,target:0});expect(next.players[1].slots[0]).toBeNull();expect(next.players[1].hp).toBe(30);expect(next.players[1].shield).toBe(0);
-  });
-  it('寒意仅增加下一次催动费用，付费后清空',()=>{
-    const g=game();g.players[0].chill=2;expect(activationCost(g.players[0],'fy-core')).toBe(2);
-    const next=reduceCultGame(g,0,{type:'activate',slot:0});expect(next.players[0].yuan).toBe(3);expect(next.players[0].chill).toBe(0);
-  });
-  it('升炼恢复耐久并增加数值，拆解每轮最多一次',()=>{
-    let g=game();g.players[0].rank=3;g.players[1].ap=0;g.players[0].slots[0]!.durability=1;
-    g=reduceCultGame(g,0,{type:'upgrade',slot:0});expect(g.players[0].slots[0]!.durability).toBe(5);expect(guMaximum(g.players[0].slots[0]!)).toBe(5);
-    g=reduceCultGame(g,0,{type:'salvage',slot:0});expect(g.players[0].slots[0]).toBeNull();
-    expect(actionError(g,0,{type:'salvage',slot:1})).toBeTruthy();
-  });
-  it('每轮经营收益受限制，凝元不能无限使用',()=>{
-    let g=game();g.players[1].ap=0;addGu(g,0,1,'wine');g=reduceCultGame(g,0,{type:'activate',slot:1});expect(g.players[0].yuan).toBe(6);
-    g=reduceCultGame(g,0,{type:'meditate'});expect(actionError(g,0,{type:'meditate'})).toMatch(/每轮/);
-  });
+function conservation(g:CultGame){expect(allCards(g)).toHaveLength(64);expect(new Set(allCards(g).map(c=>c.uid)).size).toBe(64);expect(validCultSave(JSON.parse(JSON.stringify(g)))).toBe(true);}
+describe('蛊道争仙 · 单模式与资源闭环',()=>{
+  it('公平起点、实体库存和可恢复存档',()=>{const g=game();for(const p of g.players){expect([p.hp,p.lifespan,p.rank,p.stage,p.yuan,p.essence,p.qi,p.ap]).toEqual([30,8,5,0,3,0,4,3]);expect(p.hand).toHaveLength(5);expect(p.hand.some(c=>c.kind==='life')).toBe(true);}expect(g.market).toHaveLength(5);conservation(g);});
+  it('拒绝旧规则、损坏、重复卡牌和越界存档',()=>{const g=game();expect(validCultSave({...g,version:2})).toBe(false);expect(validCultSave({...g,pending:{kind:'book'}})).toBe(false);g.deck[0]={...g.players[0].hand[0]};expect(validCultSave(g)).toBe(false);});
+  it('非法操作不扣资源、不改变原状态',()=>{const g=game();g.players[0].qi=0;const copy=JSON.stringify(g);expect(reduceCultGame(g,0,{type:'strike'})).toBe(g);expect(reduceCultGame(g,1,{type:'pass'})).toBe(g);expect(reduceCultGame(g,0,{type:'activate',slot:8})).toBe(g);expect(JSON.stringify(g)).toBe(copy);});
+  it('没有攻击牌或组件也能攻伐，攻击类行动不能叠用',()=>{let g=game();g.players[0].slots=[null,null,null,null];g=reduceCultGame(g,0,{type:'strike'});expect(g.players[1].hp).toBe(28);g.actor=0;expect(actionError(g,0,{type:'strike'})).toMatch(/一次/);expect(actionError(g,0,{type:'rest'})).toMatch(/二选一/);});
+  it('真元与交易资源分开，升级不立即补真元',()=>{let g=game();g.players[1].ap=0;g=reduceCultGame(g,0,{type:'cultivate'});expect([g.players[0].stage,g.players[0].yuan,g.players[0].lifespan,g.players[0].qi]).toEqual([1,0,7,4]);expect(qiMaximum(g.players[0])).toBe(5);expect(actionError(g,0,{type:'cultivate'})).toMatch(/每轮/);g=finish(g);expect([g.players[0].qi,g.players[0].yuan,g.players[0].lifespan]).toEqual([5,2,6]);});
+  it('攻击护盾保护指定蛊虫，组件被拆不会溢出伤害到人物',()=>{const g=game();g.players[1].shield=1;g.players[1].slots[0]!.durability=1;const n=reduceCultGame(g,0,{type:'strike',target:0});expect(n.players[1].slots[0]).toBeNull();expect(n.players[1].hp).toBe(30);});
+  it('真人选择弃牌后才能进入下一轮，弃牌不发动寿蛊',()=>{let g=game();give(g,0,'life');give(g,0,'book');g=reduceCultGame(g,0,{type:'pass'});g=reduceCultGame(g,1,{type:'pass'});expect(g.pending?.kind).toBe('discard');expect(g.round).toBe(1);if(g.pending?.kind!=='discard')throw new Error();const id=g.players[0].hand.find(c=>c.kind==='life')!.uid;g=reduceCultGame(g,0,{type:'discard',uids:[id]});expect(g.round).toBe(2);expect(g.players[0].lifespan).toBe(7);expect(g.exiled).toHaveLength(0);conservation(g);});
 });
-
-describe('杀招必须使用两只不同且可用的组件',()=>{
-  it('同一只双标签蛊不能兼任两个组件，使用过的组件不可参与',()=>{
-    const g=game(),m=MOVES.find(m=>m.id==='fy-move')!;expect(components(g,g.players[0],m)).toBeNull();
-    addGu(g,0,1,'moon');expect(components(g,g.players[0],m)).toEqual([0,1]);
-    g.players[0].slots[1]!.usedRound=g.round;expect(components(g,g.players[0],m)).toBeNull();
-  });
-  it('参悟和发动分别收费，组件休眠，冷却不可绕过',()=>{
-    let g=game();g.players[0].rank=3;g.players[0].yuan=12;g.players[1].ap=0;addGu(g,0,1,'moon');
-    g=reduceCultGame(g,0,{type:'learn',move:'slash'});expect(g.players[0].yuan).toBe(10);
-    g=reduceCultGame(g,0,{type:'move',move:'slash'});expect(g.players[0].yuan).toBe(7);expect(g.players[1].hp).toBe(24);
-    expect(g.players[0].slots[0]!.usedRound).toBe(1);expect(g.players[0].slots[1]!.usedRound).toBe(1);
-    expect(actionError(g,0,{type:'move',move:'slash'})).toMatch(/第3轮/);
-  });
-  it('黑楼兰杀招消耗原有力势，再由本轮首次伤害获得新的一层',()=>{
-    const g=createCultGame('he Loulan',DEFAULT_GU,DEFAULT_MOVES,10,'fangyuan');g.actor=0;g.players[0].rank=3;g.players[0].force=3;g.players[0].learned=['hl-move'];addGu(g,0,1,'moon');
-    const next=reduceCultGame(g,0,{type:'move',move:'hl-move'});expect(next.players[1].hp).toBe(23);expect(next.players[0].force).toBe(1);
-  });
+describe('八种手牌 · 费用、时机和信息',()=>{
+  it('寿蛊延寿不回血，使用后永久放逐；零寿元留本轮救援窗口',()=>{let g=game();g.players[0].lifespan=0;g.players[0].hp=9;const id=g.players[0].hand.find(c=>c.kind==='life')!.uid;g=play(g,0,'life');expect(g.players[0].lifespan).toBe(3);expect(g.players[0].hp).toBe(9);expect(g.exiled.map(c=>c.uid)).toContain(id);expect(g.winner).toBeNull();conservation(g);});
+  it('轮末零寿元败北，双方同时耗尽为平局',()=>{const g=game();g.players[0].lifespan=0;expect(finish(g).winner).toBe(1);g.players[1].lifespan=0;expect(finish(g).winner).toBe('draw');});
+  it('舍利只提升五转小境界，不能连升、不能直接成仙',()=>{let g=game();g.players[1].ap=0;const before=[g.players[0].yuan,g.players[0].lifespan];g=play(g,0,'relic');expect(g.players[0].stage).toBe(1);expect([g.players[0].yuan,g.players[0].lifespan]).toEqual(before);expect(g.players[0].qi).toBe(3);expect(actionError(g,0,{type:'cultivate'})).toMatch(/每轮/);give(g,0,'relic');expect(actionError(g,0,{type:'hand',uid:g.players[0].hand.find(c=>c.kind==='relic')!.uid})).toMatch(/同名/);g.players[0].stage=3;g.players[0].usedHand=[];expect(actionError(g,0,{type:'hand',uid:g.players[0].hand.find(c=>c.kind==='relic')!.uid})).toMatch(/直接成仙/);conservation(g);});
+  it('神念可跨轮保留，只抵指定手牌，不能变成仙元',()=>{let g=game();g=play(g,0,'mind');expect(g.players[0].thought).toBe(2);g.actor=0;const b=give(g,0,'book');expect(handCost(g.players[0],b,true)).toBe(0);g=reduceCultGame(g,0,{type:'hand',uid:b.uid,useMind:true});expect(g.players[0].thought).toBe(1);expect(g.players[0].essence).toBe(0);expect(g.pending?.kind).toBe('book');conservation(g);});
+  it('书虫先付款，选择真实顶牌；剩余按指定次序置底',()=>{let g=game();g=play(g,0,'book');expect(g.pending?.kind).toBe('book');expect(g.players[0].ap).toBe(2);expect(g.players[0].qi).toBe(3);if(g.pending?.kind!=='book')throw new Error();const ids=g.pending.cards.map(c=>c.uid),invalid=reduceCultGame(g,0,{type:'chooseBook',keep:[ids[0],ids[0]]});expect(invalid).toBe(g);g=reduceCultGame(g,0,{type:'chooseBook',keep:[ids[0],ids[2]],bottom:[ids[3],ids[1]]});expect(g.deck.slice(-2).map(c=>c.uid)).toEqual([ids[3],ids[1]]);expect(g.players[0].hand.map(c=>c.uid)).toEqual(expect.arrayContaining([ids[0],ids[2]]));conservation(g);});
+  it('铭心记录经验，不复制实体；只能留一个专长',()=>{let g=game();g.players[1].ap=0;give(g,0,'book');const m=give(g,0,'memory');g=reduceCultGame(g,0,{type:'hand',uid:m.uid,memory:'book'});expect(g.players[0].memory?.kind).toBe('book');const b=g.players[0].hand.find(c=>c.kind==='book')!;expect(handCost(g.players[0],b)).toBe(0);expect(actionError(g,0,{type:'hand',uid:g.players[0].hand.find(c=>c.kind==='life')!.uid,memory:'life'})).toBeNull();conservation(g);});
+  it('东窗先付定金再查货，实物只从库存转到唯一订单位',()=>{let g=game();g=play(g,0,'window');expect(g.pending?.kind).toBe('window');expect(g.players[0].yuan).toBe(2);expect(g.players[0].qi).toBe(3);if(g.pending?.kind!=='window')throw new Error();expect(g.pending.options).toContain('life');g=reduceCultGame(g,0,{type:'chooseOrder',kind:'life'});expect(g.players[0].order?.card.kind).toBe('life');expect(g.players[0].order?.expires).toBe(2);g.actor=0;g.players[0].usedHand=[];const w=give(g,0,'window');expect(actionError(g,0,{type:'hand',uid:w.uid})).toMatch(/原订单/);conservation(g);});
+  it('过期订单退库、不退定金，不提供免费取消入口',()=>{let g=game();g=play(g,0,'window');g=reduceCultGame(g,0,{type:'chooseOrder',kind:'life'});const id=g.players[0].order!.card.uid;g=finish(g);expect(g.players[0].order).not.toBeNull();g=finish(g);expect(g.players[0].order).toBeNull();expect(g.deck.some(c=>c.uid===id)||g.players.some(p=>p.hand.some(c=>c.uid===id))).toBe(true);conservation(g);});
+  it('通天支持先卖筹款，先锁目标，不能卖自己或边补边追加',()=>{let g=game();g.players[0].yuan=0;const t=give(g,0,'heaven'),sold=g.players[0].hand.find(c=>c.uid!==t.uid)!,item=g.market[0];const invalid={type:'hand' as const,uid:t.uid,buys:[item.uid],sell:t.uid};expect(reduceCultGame(g,0,invalid)).toBe(g);g=reduceCultGame(g,0,{type:'hand',uid:t.uid,buys:[item.uid],sell:sold.uid});expect(g.players[0].yuan).toBe(0);expect(g.players[0].hand.some(c=>c.uid===item.uid)).toBe(true);expect(g.discard.some(c=>c.uid===sold.uid)).toBe(true);expect(g.market).toHaveLength(5);conservation(g);});
+  it('东窗→通天→寿蛊完整链，不产生额外实体',()=>{let g=game();g.players[1].ap=0;g.players[0].yuan=2;g.players[0].lifespan=2;g.players[0].stage=3;g.players[0].qi=7;give(g,0,'window');give(g,0,'heaven');g=play(g,0,'window');g=reduceCultGame(g,0,{type:'chooseOrder',kind:'life'});const id=g.players[0].order!.card.uid,item=g.market[0].uid;g=play(g,0,'heaven',{buys:[id,item]});g=reduceCultGame(g,0,{type:'hand',uid:id});expect(g.exiled.some(c=>c.uid===id)).toBe(true);expect(g.players[0].lifespan).toBeGreaterThanOrEqual(4);conservation(g);});
+  it('搜魂必须先伤人物，拆蛊和完全被盾挡住都不满足',()=>{const g=game(),s=give(g,0,'soul');expect(actionError(g,0,{type:'hand',uid:s.uid})).toMatch(/实际伤害/);g.players[1].shield=9;const n=reduceCultGame(g,0,{type:'strike'});n.actor=0;expect(actionError(n,0,{type:'hand',uid:s.uid})).toMatch(/实际伤害/);});
+  it('搜魂先决定神念抵抗，再随机看牌，抵抗后不能扰动',()=>{let g=game();g.players[0].contactRound=1;g.players[1].thought=1;g=play(g,0,'soul');expect(g.pending?.kind).toBe('soul-defense');expect(g.actor).toBe(1);g=reduceCultGame(g,1,{type:'resistSoul',resist:true});expect(g.players[1].thought).toBe(0);if(g.pending?.kind!=='soul-mark')throw new Error();expect(g.pending.uids).toHaveLength(1);expect(actionError(g,0,{type:'markSoul',uid:g.pending.uids[0]})).toMatch(/不能扰动/);g=reduceCultGame(g,0,{type:'markSoul'});conservation(g);});
+  it('搜魂扰动只跟随非消耗实体，不影响寿蛊舍利',()=>{let g=game();g.players[0].contactRound=1;g=play(g,0,'soul');g=reduceCultGame(g,1,{type:'resistSoul',resist:false});if(g.pending?.kind!=='soul-mark')throw new Error();const sample=g.pending.uids.map(id=>g.players[1].hand.find(c=>c.uid===id)!);const consume=sample.find(c=>['life','relic'].includes(c.kind));if(consume)expect(actionError(g,0,{type:'markSoul',uid:consume.uid})).toMatch(/不能扰动/);const target=sample.find(c=>!['life','relic'].includes(c.kind));g=reduceCultGame(g,0,{type:'markSoul',uid:target?.uid});if(target)expect(g.players[1].hand.find(c=>c.uid===target.uid)?.disturbedUntil).toBe(2);conservation(g);});
 });
-
-describe('升仙与周期灾劫',()=>{
-  it('宣告后留完整准备轮，成功前没有仙缘，成功后独立补给且不回血',()=>{
-    let g=game();g.players[0].rank=5;g.players[0].yuan=12;
-    g=reduceCultGame(g,0,{type:'ascend'});expect(g.players[0].ascensionDue).toBe(2);expect(g.players[0].rank).toBe(5);expect(g.players[0].essence).toBe(0);
-    g=finishRound(g);expect(g.round).toBe(2);expect(g.players[0].rank).toBe(5);
-    g=finishRound(g);expect(g.round).toBe(3);expect(g.players[0].rank).toBe(6);expect(g.players[0].hp).toBe(24);expect(g.players[0].essence).toBe(5);expect(g.players[0].nextTribulation).toBe(5);
-    const yuan=g.players[0].yuan;g=finishRound(g);expect(g.players[0].yuan).toBe(yuan);expect(g.players[0].essence).toBe(6);
-  });
-  it('护盾在渡劫后才清空，护劫屏障跨轮保留',()=>{
-    let g=game();g.players[0].rank=5;g.players[0].ascensionDue=1;g.players[0].shield=2;g.players[0].ward=5;
-    g=finishRound(g);expect(g.players[0].hp).toBe(30);expect(g.players[0].rank).toBe(6);expect(g.players[0].ward).toBe(0);expect(g.players[0].shield).toBe(0);
-    g.players[0].ward=8;g=finishRound(g);expect(g.players[0].ward).toBe(8);
-  });
-  it('升仙失败直接判负，不会先发仙缘或回满生命',()=>{
-    const g=game();g.players[0].hp=6;g.players[0].rank=5;g.players[0].ascensionDue=1;
-    const next=finishRound(g);expect(next.winner).toBe(1);expect(next.players[0].rank).toBe(5);expect(next.players[0].essence).toBe(0);
-  });
-  it('双方同轮渡劫阵亡为平局',()=>{
-    const g=game();g.players.forEach(p=>{p.hp=6;p.rank=5;p.ascensionDue=1;});expect(finishRound(g).winner).toBe('draw');
-  });
-  it('周期三轮一次、双方独立计数，灾劫逐渐增强',()=>{
-    let g=game();g.players[0].rank=6;g.players[0].essence=3;g.players[0].nextTribulation=1;
-    expect(forecast(g,g.players[0])?.name).toBe('九霄雷劫');g=finishRound(g);
-    expect(g.players[0].hp).toBe(26);expect(g.players[0].trials).toBe(1);expect(g.players[0].nextTribulation).toBe(4);expect(g.players[1].trials).toBe(0);
-    expect(forecast(g,g.players[0])?.strength).toBe(6);
-  });
-  it('地火打击两只不同蛊；风灾封位；蚀元扣下一轮收入',()=>{
-    let fire=game();fire.players[0].rank=6;fire.players[0].trials=1;fire.players[0].nextTribulation=1;addGu(fire,0,1,'moon');fire=finishRound(fire);
-    expect(fire.players[0].slots[1]).toBeNull();expect(fire.players[0].slots[0]!.durability).toBe(1);expect(fire.players[0].hp).toBe(28);
-    let wind=game();wind.players[0].rank=6;wind.players[0].trials=3;wind.players[0].nextTribulation=1;wind=finishRound(wind);wind.actor=0;
-    expect(wind.players[0].blockedRound).toBe(2);expect(actionError(wind,0,{type:'activate',slot:0})).toMatch(/封锁/);
-    let erosion=game();erosion.players[0].rank=6;erosion.players[0].essence=0;erosion.players[0].trials=2;erosion.players[0].nextTribulation=1;erosion=finishRound(erosion);expect(erosion.players[0].essence).toBe(2);
-  });
-  it('仙蛊成仙后可炼制，封存元石不能支付仙人费用',()=>{
-    let g=game();g.players[0].rank=6;g.players[0].yuan=12;g.players[0].essence=0;
-    expect(actionError(g,0,{type:'refine',recipe:'fy-break',slot:1})).toMatch(/仙缘/);
-    g.players[0].essence=6;g=reduceCultGame(g,0,{type:'refine',recipe:'fy-break',slot:1});expect(g.players[0].slots[1]?.recipe).toBe('fy-break');expect(g.players[0].yuan).toBe(12);
-  });
-  it('长局压迫不会被护盾或护劫屏障抵消，终局不能继续操作',()=>{
-    let g=game();g.round=18;g.players.forEach(p=>{p.hp=2;p.ward=10;p.shield=15;});g=finishRound(g);expect(g.winner).toBe('draw');expect(reduceCultGame(g,g.actor,{type:'meditate'})).toBe(g);
-  });
+describe('原升仙模式的炼蛊、杀招与灾劫',()=>{
+  it('杀招必须两只不同且可用组件，攻击杀招占用攻伐机会',()=>{let g=game();const m=MOVES.find(m=>m.id==='fy-move')!;expect(components(g,g.players[0],m)).toBeNull();addGu(g,0,1,'moon');g.players[0].learned=['slash'];g=reduceCultGame(g,0,{type:'move',move:'slash'});expect(g.players[1].hp).toBe(24);expect(g.players[0].qi).toBe(1);g.actor=0;expect(actionError(g,0,{type:'strike'})).toMatch(/一次/);expect(g.players[0].slots[1]?.usedRound).toBe(1);});
+  it('宣告突破占两行动、清零真元，下一完整轮末成仙',()=>{let g=game();g.players[0].stage=3;g.players[0].yuan=10;g=reduceCultGame(g,0,{type:'ascend'});expect([g.players[0].ap,g.players[0].qi,g.players[0].lifespan,g.players[0].yuan]).toEqual([1,0,6,6]);expect(g.players[0].ascensionDue).toBe(2);g=finish(g);expect(g.players[0].rank).toBe(5);g=finish(g);expect(g.players[0].rank).toBe(6);expect(g.players[0].hp).toBe(24);expect(g.players[0].essence).toBe(5);expect(g.players[0].nextTribulation).toBe(5);conservation(g);});
+  it('护劫先于护盾，升仙不回血，仙蛊不能作为通用配方',()=>{let g=game();g.players[0].ascensionDue=1;g.players[0].stage=3;g.players[0].ward=5;g.players[0].shield=2;g=finish(g);expect(g.players[0].rank).toBe(6);expect(g.players[0].hp).toBe(30);expect(g.players[0].ward).toBe(0);expect(g.players[0].shield).toBe(0);expect(GU.every(x=>x.rank<6)).toBe(true);expect(new Set(HEROES.map(h=>h.immortal.id)).size).toBe(4);});
+  it('渡劫失败没有仙元与技能，双方同时失败为平局',()=>{const g=game();g.players.forEach(p=>{p.hp=6;p.stage=3;p.ascensionDue=1;});const n=finish(g);expect(n.winner).toBe('draw');expect(n.players[0].rank).toBe(5);expect(n.players[0].essence).toBe(0);});
+  it('仙蛊只作为人物技能，元石不能支付仙人费用',()=>{let g=game();expect(actionError(g,0,{type:'immortal'})).toMatch(/成仙/);g.players[0].rank=6;g.players[0].stage=3;g.players[0].yuan=10;g.players[0].essence=0;expect(actionError(g,0,{type:'immortal'})).toMatch(/仙元/);g.players[0].essence=4;g=reduceCultGame(g,0,{type:'immortal'});expect(g.players[0].essence).toBe(2);expect(g.players[0].yuan).toBe(10);g.actor=0;expect(actionError(g,0,{type:'immortal'})).toMatch(/每轮/);});
+  it('周期灾劫依次递增强度、蚀元扣补给、风灾封位',()=>{let g=game();g.players[0].rank=6;g.players[0].stage=3;g.players[0].nextTribulation=1;expect(forecast(g,g.players[0])?.name).toBe('九霄雷劫');g=finish(g);expect(g.players[0].hp).toBe(26);expect(forecast(g,g.players[0])?.strength).toBe(6);let e=game();e.players[0].rank=6;e.players[0].nextTribulation=1;e.players[0].trials=2;e=finish(e);expect(e.players[0].essence).toBe(2);let w=game();w.players[0].rank=6;w.players[0].nextTribulation=1;w.players[0].trials=3;w=finish(w);w.actor=0;expect(actionError(w,0,{type:'activate',slot:0})).toMatch(/风灾封锁/);});
 });
-
-describe('人物解锁与完整AI对局',()=>{
-  it('完赛仅累积人物解锁进度，同一对局不能重复结算',()=>{
-    const g=game();let p={completed:0,wins:0,settled:[] as string[]};expect(settleProfile(p,g)).toBe(p);
-    g.winner=0;p=settleProfile(p,g);expect(p.completed).toBe(1);expect(p.wins).toBe(1);expect(settleProfile(p,g)).toBe(p);expect(Object.keys(p).sort()).toEqual(['completed','settled','wins']);
-  });
-  it('卡牌定义、归属、配方和数值自洽',()=>{
-    expect(GU.filter(g=>!g.owner)).toHaveLength(12);expect(MOVES.filter(m=>!m.owner)).toHaveLength(6);
-    expect(new Set(GU.map(g=>g.id)).size).toBe(GU.length);
-    for(const h of HEROES){expect(h.exclusive).toHaveLength(3);expect(h.exclusive.every(id=>getGu(id).owner===h.id)).toBe(true);expect(h.exclusive.filter(id=>getGu(id).rank===6)).toHaveLength(1);}
-  });
-  it('32个不同种子整局均可结束，包含成仙与周期渡劫，无负资源或非法行动',()=>{
-    let ascensions=0,tribulations=0;
-    const rounds:number[]=[];
-    for(let seed=1;seed<=32;seed++){
-      let g=createCultGame(HEROES[seed%4].id,DEFAULT_GU,DEFAULT_MOVES,seed);
-      let steps=0;
-      while(g.winner===null&&steps++<200){
-        const action=chooseCultAI(g);expect(actionError(g,g.actor,action)).toBeNull();const next=reduceCultGame(g,g.actor,action);expect(next).not.toBe(g);g=next;
-        for(const p of g.players){expect(resource(p)).toBeGreaterThanOrEqual(0);expect(resource(p)).toBeLessThanOrEqual(p.rank===6?6:12);expect(p.ap).toBeGreaterThanOrEqual(0);expect(p.ap).toBeLessThanOrEqual(3);expect(p.hp).toBeGreaterThanOrEqual(0);for(const s of p.slots)if(s){expect(s.durability).toBeGreaterThan(0);expect(s.durability).toBeLessThanOrEqual(guMaximum(s));}}
-      }
-      expect(g.winner).not.toBeNull();expect(g.round).toBeLessThanOrEqual(RULES.maxRound);ascensions+=g.players.filter(p=>p.rank===6).length;tribulations+=g.players.reduce((n,p)=>n+p.trials,0);rounds.push(g.round);
-    }
-    console.log(`升仙对决32局：平均${(rounds.reduce((a,b)=>a+b,0)/32).toFixed(1)}轮，${ascensions}人次成仙，${tribulations}次周期渡劫。`);
-    expect(ascensions).toBeGreaterThan(0);expect(tribulations).toBeGreaterThan(0);
-  },60000);
+describe('人物进度与完整对局',()=>{
+  it('只积累人物进度，同一对局不重复结算',()=>{const g=game();let p={completed:0,wins:0,settled:[] as string[]};expect(settleProfile(p,g)).toBe(p);g.winner=0;p=settleProfile(p,g);expect(p.completed).toBe(1);expect(settleProfile(p,g)).toBe(p);expect(Object.keys(p).sort()).toEqual(['completed','settled','wins']);});
+  it('AI决策不依赖未知牌序、对手手牌内容或随机状态',()=>{const a=game(),b=structuredClone(a);const c=b.players[1].hand[0];b.players[1].hand[0]=b.deck[0];b.deck[0]=c;b.deck.reverse();b.random=12345;expect(chooseCultAI(a)).toEqual(chooseCultAI(b));});
+  it('32局整局涵盖成仙和周期渡劫，每一步保持64实体及合法存档',()=>{let ascensions=0,trials=0;const rounds:number[]=[],uses=new Set<string>();for(let seed=1;seed<=32;seed++){let g=createCultGame(HEROES[seed%4].id,DEFAULT_GU,DEFAULT_MOVES,seed),steps=0;while(g.winner===null&&steps++<500){const a=chooseCultAI(g);expect(actionError(g,g.actor,a)).toBeNull();if(a.type==='hand')uses.add(g.players[g.actor].hand.find(c=>c.uid===a.uid)!.kind);const n=reduceCultGame(g,g.actor,a);expect(n).not.toBe(g);g=n;conservation(g);for(const p of g.players){expect(resource(p)).toBeGreaterThanOrEqual(0);expect(p.qi).toBeGreaterThanOrEqual(0);expect(p.ap).toBeGreaterThanOrEqual(0);}}expect(g.winner).not.toBeNull();rounds.push(g.round);ascensions+=g.players.filter(p=>p.rank===6).length;trials+=g.players.reduce((n,p)=>n+p.trials,0);}console.log('32局：平均'+(rounds.reduce((a,b)=>a+b,0)/32).toFixed(1)+'轮，成仙'+ascensions+'人次，周期劫'+trials+'次，AI使用手牌：'+[...uses].join(','));expect(ascensions).toBeGreaterThan(0);expect(trials).toBeGreaterThan(0);expect(HANDS).toHaveLength(8);},60000);
 });

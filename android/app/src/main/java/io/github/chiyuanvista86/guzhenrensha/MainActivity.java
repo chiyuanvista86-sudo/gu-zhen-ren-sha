@@ -75,7 +75,7 @@ public final class MainActivity extends Activity {
     private final class DocumentBridge {
         @JavascriptInterface public void exportFile(String name, String text, String mime) {
             if (text == null || text.length() > 2_000_000) return;
-            String filename = name == null ? "蛊真人杀.txt" : name.replaceAll("[\\\\/:*?\"<>|\\p{Cntrl}]", "_");
+            String filename = name == null ? "蛊道争仙.txt" : name.replaceAll("[\\\\/:*?\"<>|\\p{Cntrl}]", "_");
             String type = "application/json".equals(mime) ? "application/json" : "text/markdown";
             runOnUiThread(() -> {
                 if (pendingExport != null) return;
@@ -124,7 +124,7 @@ public final class MainActivity extends Activity {
         webView.resumeTimers();
     }
     @Override public void onBackPressed() {
-        new AlertDialog.Builder(this).setTitle("退出蛊真人杀？")
+        new AlertDialog.Builder(this).setTitle("退出蛊道争仙？")
             .setMessage("对局会自动保存在当前设备，下次打开可继续。")
             .setNegativeButton("继续游玩", null).setPositiveButton("退出", (dialog, which) -> finish()).show();
     }

@@ -95,7 +95,7 @@ jobs:
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs gu-zhen-ren-sha-android.apk > android-build-info.txt
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging gu-zhen-ren-sha-android.apk >> android-build-info.txt
           unzip -p gu-zhen-ren-sha-android.apk assets/index.html | cmp - dist/index.html
-          grep -q "versionName='2.0.1'" android-build-info.txt
+          grep -q "versionName='3.0.0'" android-build-info.txt
           grep -q "sdkVersion:'26'" android-build-info.txt
           if grep -Eq "uses-permission: name='android.permission.(INTERNET|ACCESS_NETWORK_STATE|READ_EXTERNAL_STORAGE|WRITE_EXTERNAL_STORAGE|MANAGE_EXTERNAL_STORAGE)'" android-build-info.txt; then
             echo 'Offline APK must not request network or storage permissions'
@@ -167,4 +167,4 @@ jobs:
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
           sha256sum gu-zhen-ren-sha-android.apk gu-zhen-ren-sha-web.zip > SHA256SUMS.txt
-          gh release create "$RELEASE_TAG" gu-zhen-ren-sha-android.apk gu-zhen-ren-sha-web.zip SHA256SUMS.txt android-build-info.txt --title "蛊真人杀 $RELEASE_TAG · 安卓手机和平板安装版" --notes-file RELEASE_NOTES.md
+          gh release create "$RELEASE_TAG" gu-zhen-ren-sha-android.apk gu-zhen-ren-sha-web.zip SHA256SUMS.txt android-build-info.txt --title "蛊道争仙 $RELEASE_TAG · 安卓手机和平板安装版" --notes-file RELEASE_NOTES.md
